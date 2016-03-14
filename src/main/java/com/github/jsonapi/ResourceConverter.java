@@ -72,13 +72,11 @@ public class ResourceConverter {
 
 				if (!idAnnotatedFields.isEmpty()) {
 					Field idField = idAnnotatedFields.get(0);
-
-					if (idField != null) {
-						idField.setAccessible(true);
-						ID_MAP.put(clazz, idField);
-					} else {
-						throw new IllegalArgumentException("All resource classes must have an field annotated with the @Id annotation");
-					}
+					idField.setAccessible(true);
+					ID_MAP.put(clazz, idField);
+				} else {
+					throw new IllegalArgumentException("All resource classes must have a field annotated with the " +
+							"@Id annotation");
 				}
 			} else {
 				throw new IllegalArgumentException("All resource classes must be annotated with Type annotation!");
@@ -136,13 +134,13 @@ public class ResourceConverter {
 
 			ValidationUtils.ensureObject(rootNode);
 
+			Map<String, Object> included = parseIncluded(rootNode);
+
 			JsonNode dataNode = rootNode.get(DATA);
 
-			Map<String, Object> included = parseIncluded(rootNode);
 			T result = readObject(dataNode, clazz, included);
 
 			return result;
-
 		} catch (RuntimeException e) {
 			throw e;
 		} catch (Exception e) {
@@ -232,6 +230,43 @@ public class ResourceConverter {
 		Map<String, Object> result = new HashMap<>();
 
 		if (parent.has(INCLUDED)) {
+			// Get resources
+			List<Resource> includedResources = getIncludedResources(parent);
+
+			if (!includedResources.isEmpty()) {
+				// Add to result
+				for (Resource includedResource : includedResources) {
+					result.put(includedResource.getIdentifier(), includedResource.getObject());
+				}
+
+				ArrayNode includedArray = (ArrayNode) parent.get(INCLUDED);
+
+				for (int i = 0; i < includedResources.size(); i++) {
+					Resource resource = includedResources.get(i);
+
+					// Handle relationships
+					JsonNode node = includedArray.get(i);
+					handleRelationships(node, resource.getObject(), result);
+				}
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * Parses out included resources excluding relationships.
+	 * @param parent root node
+	 * @return map of identifier/resource pairs
+	 * @throws IOException
+	 * @throws IllegalAccessException
+	 * @throws InstantiationException
+	 */
+	private List<Resource> getIncludedResources(JsonNode parent)
+			throws IOException, IllegalAccessException, InstantiationException {
+		List<Resource> result = new ArrayList<>();
+
+		if (parent.has(INCLUDED)) {
 			for (JsonNode jsonNode : parent.get(INCLUDED)) {
 				String type = jsonNode.get(TYPE).asText();
 
@@ -240,7 +275,7 @@ public class ResourceConverter {
 
 					if (clazz != null) {
 						Object object = readObject(jsonNode, clazz, null);
-						result.put(createIdentifier(jsonNode), object);
+						result.add(new Resource(createIdentifier(jsonNode), object));
 					}
 				}
 			}
@@ -294,25 +329,15 @@ public class ResourceConverter {
 							List elements = new ArrayList<>();
 
 							for (JsonNode element : relationship.get(DATA)) {
-								String identifier = createIdentifier(element);
-
-								if (includedData.containsKey(identifier)) {
-									elements.add(includedData.get(identifier));
-								} else {
-									Object relationshipObject = readObject(element, type, includedData);
+								Object relationshipObject = parseRelationship(element, type, includedData);
+								if (relationshipObject != null) {
 									elements.add(relationshipObject);
 								}
 							}
 							relationshipField.set(object, elements);
 						} else {
-							JsonNode dataObject = relationship.get(DATA);
-
-							String identifier = createIdentifier(dataObject);
-
-							if (includedData.containsKey(identifier)) {
-								relationshipField.set(object, includedData.get(identifier));
-							} else {
-								Object relationshipObject = readObject(dataObject, type, includedData);
+							Object relationshipObject = parseRelationship(relationship.get(DATA), type, includedData);
+							if (relationshipObject != null) {
 								relationshipField.set(object, relationshipObject);
 							}
 						}
@@ -320,6 +345,31 @@ public class ResourceConverter {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Creates relationship object by consuming provided 'data' node.
+	 * @param relationshipDataNode relationship data node
+	 * @param type object type
+	 * @param cache object cache
+	 * @return created object or <code>null</code> in case data node is not valid
+	 * @throws IOException
+	 * @throws IllegalAccessException
+	 * @throws InstantiationException
+	 */
+	private Object parseRelationship(JsonNode relationshipDataNode, Class<?> type, Map<String, Object> cache)
+			throws IOException, IllegalAccessException, InstantiationException {
+		if (ValidationUtils.isRelationshipParsable(relationshipDataNode)) {
+			String identifier = createIdentifier(relationshipDataNode);
+
+			if (cache.containsKey(identifier)) {
+				return cache.get(identifier);
+			} else {
+				return readObject(relationshipDataNode, type, cache);
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -451,15 +501,33 @@ public class ResourceConverter {
 		return objectMapper.writeValueAsBytes(result);
 	}
 
+	/**
+	 * Returns relationship resolver for given type. In case no specific type resolver is registered, global resolver
+	 * is returned.
+	 * @param type relationship object type
+	 * @return relationship resolver or <code>null</code>
+	 */
 	private RelationshipResolver getResolver(Class<?> type) {
-		RelationshipResolver resolver = globalResolver;
+		RelationshipResolver resolver = typedResolvers.get(type);
+		return resolver != null ? resolver : globalResolver;
+	}
 
-		// Check if there is a specific type resolver present
-		if (typedResolvers.containsKey(type)) {
-			resolver = typedResolvers.get(type);
+	private class Resource {
+		private String identifier;
+		private Object object;
+
+		public Resource(String identifier, Object resource) {
+			this.identifier = identifier;
+			this.object = resource;
 		}
 
-		return resolver;
+		public String getIdentifier() {
+			return identifier;
+		}
+
+		public Object getObject() {
+			return object;
+		}
 	}
 
 
