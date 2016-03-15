@@ -1,13 +1,13 @@
-package com.github.jsonapi;
+package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import com.github.jsonapi.models.Article;
-import com.github.jsonapi.models.Author;
-import com.github.jsonapi.models.Comment;
-import com.github.jsonapi.models.NoIdAnnotationModel;
-import com.github.jsonapi.models.Status;
-import com.github.jsonapi.models.User;
+import com.github.jasminb.jsonapi.models.Article;
+import com.github.jasminb.jsonapi.models.Author;
+import com.github.jasminb.jsonapi.models.Comment;
+import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
+import com.github.jasminb.jsonapi.models.Status;
+import com.github.jasminb.jsonapi.models.User;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

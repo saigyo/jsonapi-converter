@@ -1,4 +1,4 @@
-package com.github.jsonapi;
+package com.github.jasminb.jsonapi;
 
 /**
  * JSON API Spec resource constants.
@@ -14,4 +14,5 @@ public interface JSONAPISpecConstants {
 	String INCLUDED = "included";
 	String LINKS = "links";
 	String SELF = "self";
+	String ERRORS = "errors";
 }

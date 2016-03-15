@@ -1,4 +1,4 @@
-package com.github.jsonapi;
+package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -6,9 +6,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.jsonapi.annotations.Id;
-import com.github.jsonapi.annotations.Relationship;
-import com.github.jsonapi.annotations.Type;
+import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.annotations.Id;
+import com.github.jasminb.jsonapi.annotations.Type;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -18,7 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import static com.github.jsonapi.JSONAPISpecConstants.*;
+import static com.github.jasminb.jsonapi.JSONAPISpecConstants.*;
 
 /**
  * JSON API data converter. <br />
@@ -132,6 +132,8 @@ public class ResourceConverter {
 		try {
 			JsonNode rootNode = objectMapper.readTree(data);
 
+			// Validate
+			ValidationUtils.ensureNotError(rootNode);
 			ValidationUtils.ensureObject(rootNode);
 
 			Map<String, Object> included = parseIncluded(rootNode);
@@ -161,6 +163,8 @@ public class ResourceConverter {
 		try {
 			JsonNode rootNode = objectMapper.readTree(data);
 
+			// Validate
+			ValidationUtils.ensureNotError(rootNode);
 			ValidationUtils.ensureCollection(rootNode);
 
 			Map<String, Object> included = parseIncluded(rootNode);
@@ -512,7 +516,7 @@ public class ResourceConverter {
 		return resolver != null ? resolver : globalResolver;
 	}
 
-	private class Resource {
+	private static class Resource {
 		private String identifier;
 		private Object object;
 

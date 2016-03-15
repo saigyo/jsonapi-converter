@@ -1,7 +1,8 @@
-package com.github.jsonapi;
+package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import static com.github.jsonapi.JSONAPISpecConstants.*;
+import com.github.jasminb.jsonapi.exceptions.ResourceParseException;
 
 /**
  * Utility methods for validating segments of JSON API resource object.
@@ -41,16 +42,27 @@ public class ValidationUtils {
 	 * @return <code>true</code> if node has required attributes, else <code>false</code>
 	 */
 	public static boolean isRelationshipParsable(JsonNode dataNode) {
-		if (dataNode != null) {
-			return dataNode != null && dataNode.hasNonNull(ID) && dataNode.hasNonNull(TYPE) &&
-					!dataNode.get(ID).isContainerNode() && !dataNode.get(TYPE).isContainerNode();
-		}
+		return dataNode != null && dataNode.hasNonNull(JSONAPISpecConstants.ID) && dataNode.hasNonNull(JSONAPISpecConstants.TYPE) &&
+				!dataNode.get(JSONAPISpecConstants.ID).isContainerNode() && !dataNode.get(JSONAPISpecConstants.TYPE).isContainerNode();
+	}
 
-		return false;
+	/**
+	 * Ensures that provided node does not hold 'errors' attribute.
+	 * @param resourceNode resource node
+	 * @throws ResourceParseException
+	 */
+	public static void ensureNotError(JsonNode resourceNode) {
+		if (resourceNode != null && resourceNode.hasNonNull(JSONAPISpecConstants.ERRORS)) {
+			try {
+				throw new ResourceParseException(ErrorUtils.parseError(resourceNode));
+			} catch (JsonProcessingException e) {
+				throw new RuntimeException(e);
+			}
+		}
 	}
 
 	private static JsonNode ensureDataNode(JsonNode resource) {
-		JsonNode dataNode = resource.get(DATA);
+		JsonNode dataNode = resource.get(JSONAPISpecConstants.DATA);
 
 		// Make sure data node exists
 		if (dataNode == null) {

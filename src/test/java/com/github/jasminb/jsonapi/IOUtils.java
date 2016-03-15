@@ -1,4 +1,4 @@
-package com.github.jsonapi;
+package com.github.jasminb.jsonapi;
 
 import java.io.BufferedReader;
 import java.io.IOException;
